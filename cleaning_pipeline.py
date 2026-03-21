@@ -157,7 +157,7 @@ def is_address_like_column(col_name: str) -> bool:
     Detect whether a column likely contains addresses.
     """
     col_name = str(col_name).strip().lower()
-    address_keywords = ["address", "addr", "location_address", "business_address", "customer_address"]
+    address_keywords = ["address", "addr", "location_address", "business_address", "customer_address", "shipping_address", "billing_address"]
     return any(keyword in col_name for keyword in address_keywords)
  
 
@@ -184,7 +184,7 @@ def parse_single_address(address: str) -> Dict:
         "street_info": pd.NA,
         "locality": pd.NA,
         "area": pd.NA,
-        "city": pd.NA
+        "region": pd.NA
     }
 
     if pd.isna(address):
@@ -353,10 +353,6 @@ def parse_review_columns(df: pd.DataFrame, drop_original: bool = True) -> Tuple[
     Detect review-like columns and create rating-specific review columns.
     Example:
         reviews_rating_1_0
-        reviews_rating_2_0
-        reviews_rating_3_0
-        reviews_rating_4_0
-        reviews_rating_5_0
     """
     df = df.copy()
     parsed_columns = []
@@ -494,32 +490,38 @@ def infer_types(df: pd.DataFrame) -> pd.DataFrame:
 
     return df
 
-
-#=========================================================== 9) Fill missing values
-def fill_missing_values(df: pd.DataFrame) -> pd.DataFrame:
+#=========================================================== 9) Handle missing values
+def handle_missing_values(df: pd.DataFrame, strategy: str) -> pd.DataFrame:
     """
-    Fill missing values:
-    - numeric -> median
-    - bool -> mode
-    - object/text -> 'Unknown'
+    Handle missing values based on user preference:
+    - 'drop': Removes any row containing a missing value
+    - 'fill': Imputes data (median for numeric, mode for bool, 'No data' for text)
+    - 'ignore': Leaves pd.NA / NaN values exactly as they are
     """
     df = df.copy()
 
-    numeric_cols = df.select_dtypes(include=["number"]).columns
-    for col in numeric_cols:
-        median_val = df[col].median()
-        df[col] = df[col].fillna(median_val)
+    if strategy == "drop":
+        # Drop rows with any missing values
+        df = df.dropna()
+        
+    elif strategy == "fill":
+        # Existing fill logic
+        numeric_cols = df.select_dtypes(include=["number"]).columns
+        for col in numeric_cols:
+            median_val = df[col].median()
+            df[col] = df[col].fillna(median_val)
 
-    bool_cols = df.select_dtypes(include=["bool"]).columns
-    for col in bool_cols:
-        mode_val = df[col].mode(dropna=True)
-        if not mode_val.empty:
-            df[col] = df[col].fillna(mode_val.iloc[0])
+        bool_cols = df.select_dtypes(include=["bool"]).columns
+        for col in bool_cols:
+            mode_val = df[col].mode(dropna=True)
+            if not mode_val.empty:
+                df[col] = df[col].fillna(mode_val.iloc[0])
 
-    object_cols = df.select_dtypes(include=["object"]).columns
-    for col in object_cols:
-        df[col] = df[col].fillna("Unknown")
-
+        object_cols = df.select_dtypes(include=["object"]).columns
+        for col in object_cols:
+            df[col] = df[col].fillna("No data")
+            
+    # If strategy is "ignore", we do nothing and just return the df
     return df
 
 #============================================================== 10) Main cleaning pipeline
@@ -567,9 +569,10 @@ def clean_dataframe(df: pd.DataFrame, options: Dict) -> Tuple[pd.DataFrame, Dict
     if options.get("infer_types", True):
         df = infer_types(df)
 
-    # 8) Fill missing values
-    if options.get("fill_missing", True):
-        df = fill_missing_values(df)
+    # 8) Handle missing values
+    # Default to "fill" if the user didn't explicitly choose a strategy
+    missing_strategy = options.get("missing_value_strategy", "fill")
+    df = handle_missing_values(df, strategy=missing_strategy)
 
     report["rows_after"] = len(df)
     report["columns_after"] = df.shape[1]

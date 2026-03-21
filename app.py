@@ -65,9 +65,26 @@ trim_spaces = st.sidebar.checkbox("Clean text spaces", value=True)
 collapse_spaces = st.sidebar.checkbox("Collapse repeated spaces", value=True)
 infer_types = st.sidebar.checkbox("Infer column data types", value=True)
 remove_duplicates = st.sidebar.checkbox("Remove duplicate rows", value=True)
-fill_missing = st.sidebar.checkbox("Fill missing values", value=True)
 parse_addresses = st.sidebar.checkbox("Clean address columns", value=True)
 parse_reviews = st.sidebar.checkbox("Clean review columns", value=True)
+st.sidebar.divider()
+st.sidebar.subheader("Missing Value Strategy")
+missing_strategy_choice = st.sidebar.radio(
+    "options to handle missing data",
+    options=[
+        "Fill with estimates (Median/Mode)", 
+        "Drop rows with missing data", 
+        "Ignore them blank"
+    ],
+    index=0 # Defaults to the first option
+)
+
+# Map the human-readable UI text to our backend keywords
+strategy_map = {
+    "Fill with estimates (Median/Mode)": "fill",
+    "Drop rows with missing data": "drop",
+    "Ignore them blank": "ignore"
+}
 
 options = {
     "normalize_headers": normalize_headers,
@@ -75,9 +92,10 @@ options = {
     "collapse_spaces": collapse_spaces,
     "infer_types": infer_types,
     "remove_duplicates": remove_duplicates,
-    "fill_missing": fill_missing,
     "parse_addresses": parse_addresses,
     "parse_reviews": parse_reviews,
+    "missing_value_strategy": strategy_map[missing_strategy_choice],
+
 }
 
 
@@ -89,11 +107,27 @@ uploaded_file = st.file_uploader("Upload a CSV file", type=["csv"])
 if uploaded_file is not None:
     st.success(f"File uploaded: {uploaded_file.name}")
 
-    if st.button("Run Data Cleaning "):
+    # 1. Run the pipeline and save to session state
+    if st.button("Run Data Cleaning"):
         with st.spinner("Cleaning your data..."):
             raw_df, cleaned_df, report, meta = run_cleaning_pipeline(uploaded_file, options)
+            
+            # Save results to session state so they don't disappear
+            st.session_state['cleaned'] = True
+            st.session_state['raw_df'] = raw_df
+            st.session_state['cleaned_df'] = cleaned_df
+            st.session_state['report'] = report
+            st.session_state['meta'] = meta
 
+    # 2. Display everything IF it's in the session state
+    if st.session_state.get('cleaned', False):
         st.success("Cleaning completed successfully")
+        
+        # Retrieve the saved variables
+        raw_df = st.session_state['raw_df']
+        cleaned_df = st.session_state['cleaned_df']
+        report = st.session_state['report']
+        meta = st.session_state['meta']
 
         #================================================= File metadata
         st.subheader("Detected File Metadata")
