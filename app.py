@@ -72,18 +72,18 @@ st.sidebar.subheader("Missing Value Strategy")
 missing_strategy_choice = st.sidebar.radio(
     "options to handle missing data",
     options=[
-        "Fill with estimates (Median/Mode)", 
-        "Drop rows with missing data", 
-        "Ignore them blank"
+        "Fill blanks", 
+        "Drop blank rows", 
+        "Ignore blanks" 
     ],
     index=0 # Defaults to the first option
 )
 
 # Map the human-readable UI text to our backend keywords
 strategy_map = {
-    "Fill with estimates (Median/Mode)": "fill",
-    "Drop rows with missing data": "drop",
-    "Ignore them blank": "ignore"
+    "Fill blanks": "fill",
+    "Drop blank rows": "drop",
+    "Ignore blanks": "ignore"
 }
 
 options = {

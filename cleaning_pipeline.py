@@ -307,7 +307,7 @@ def parse_reviews_to_rating_columns(cell) -> Dict:
 
     parsed_obj = cell
 
-    # Try to parse stringified list/tuple
+    # Trying to parse stringified list/tuple
     if isinstance(cell, str):
         text = cell.strip()
         try:
@@ -496,7 +496,7 @@ def handle_missing_values(df: pd.DataFrame, strategy: str) -> pd.DataFrame:
     Handle missing values based on user preference:
     - 'drop': Removes any row containing a missing value
     - 'fill': Imputes data (median for numeric, mode for bool, 'No data' for text)
-    - 'ignore': Leaves pd.NA / NaN values exactly as they are
+    - 'ignore': Leaves pd.NA / NaN values as they are without modification
     """
     df = df.copy()
 
