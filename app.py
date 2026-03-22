@@ -5,11 +5,11 @@ import streamlit as st
 from cleaning_pipeline import run_cleaning_pipeline
 
 
-# Streamlit page config
+#============================================================= Streamlit page config
 st.set_page_config(page_title="A Generic AutoML Pipeline", layout="wide")
 
 
-# Helper functions for safe Streamlit display
+#======================================================= Helper functions for safe Streamlit display
 def make_streamlit_safe_value(x):
     """
     Convert complex Python objects into strings so Streamlit
@@ -79,7 +79,7 @@ missing_strategy_choice = st.sidebar.radio(
     index=0 # Defaults to the first option
 )
 
-# Map the human-readable UI text to our backend keywords
+# Mapping the UI text to our backend keywords
 strategy_map = {
     "Fill blanks": "fill",
     "Drop blank rows": "drop",
