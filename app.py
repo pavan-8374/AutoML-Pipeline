@@ -3,6 +3,7 @@ import pandas as pd
 import streamlit as st
 
 from cleaning_pipeline import run_cleaning_pipeline
+from auto_ml import run_automl_model
 
 
 #============================================================= Streamlit page config
@@ -112,16 +113,59 @@ if uploaded_file is not None:
         with st.spinner("Cleaning your data..."):
             raw_df, cleaned_df, report, meta = run_cleaning_pipeline(uploaded_file, options)
             
-            # Save results to session state so they don't disappear
+            # Saving results to session state so they don't disappear
             st.session_state['cleaned'] = True
             st.session_state['raw_df'] = raw_df
             st.session_state['cleaned_df'] = cleaned_df
             st.session_state['report'] = report
             st.session_state['meta'] = meta
 
-    # 2. Display everything IF it's in the session state
-    if st.session_state.get('cleaned', False):
+    # 2. Display everything if it's in the session state
+    if st.session_state.get('cleaned', True):
         st.success("Cleaning completed successfully")
+        st.divider()
+        st.header("AutoML Model Training and Results Evaluation")
+        with st.form("automl_form"):
+            col1,col2 = st.columns(2)
+            with col1:
+                # 1. Target column selection
+                target_column = st.selectbox("Select target column for modeling", st.session_state['cleaned_df'].columns)
+                # 2. Task type selection
+                task_type = st.radio("Select Machine Learning", ["classification", "regression"])
+            
+    with col2:
+        # 3. Model selection
+        if task_type == "classification":
+            available_models = ["Logistic Regression", "Random Forest Classifier", "XGBoost Classifier", "SVC"]
+        else:
+            available_models = ["Linear Regression", "Random Forest Regressor", "XGBoost Regressor", "Ridge Regression"]
+        
+        selected_models = st.multiselect("Select Models to Train:", available_models, default=available_models)
+    
+# Submit button for the form
+start_training = st.form_submit_button("Train Models")
+
+#============================================= Execute the selected ML models training 
+if start_training:
+    if len(selected_models) == 0:
+        st.error("Please select at least one model to train.")
+    else:
+        with st.spinner(f"Training {len(selected_models)} models... This may take a minute."):
+            try:
+                # Run the AutoML function with the cleaned dataframe and user selections
+                results, best_model, plot_data = run_automl_model(
+                df=st.session_state['cleaned_df'], 
+                target_column=target_column,
+                task_type=task_type, 
+                selected_models=selected_models
+            )
+                st.success(f"Training Complete! Best Model: {results.iloc[0]['Model Name']}")
+                
+                # Display the Results DataFrame
+                st.subheader("ML Model Results")
+                st.dataframe(results, use_container_width=True)
+            except Exception as e:
+                st.error(f"Error during model training: {str(e)}")
         
         # Retrieve the saved variables
         raw_df = st.session_state['raw_df']
@@ -150,13 +194,13 @@ if uploaded_file is not None:
 
         #============================================ Address parsing details
         if report.get("address_columns_parsed"):
-            st.subheader("Address Parsing")
+            st.subheader("Address Cleaning")
             st.write("Parsed address columns:")
             st.write(report["address_columns_parsed"])
 
         #============================================== Review parsing details
         if report.get("review_columns_parsed"):
-            st.subheader("Review Parsing")
+            st.subheader("Review Cleaning")
             st.write("Parsed review columns:")
             st.write(report["review_columns_parsed"])
 
