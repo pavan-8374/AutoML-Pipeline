@@ -5,10 +5,8 @@ import streamlit as st
 from cleaning_pipeline import run_cleaning_pipeline
 from auto_ml import run_automl_model
 
-
 #============================================================= Streamlit page config
 st.set_page_config(page_title="A Generic AutoML Pipeline", layout="wide")
-
 
 #======================================================= Helper functions for safe Streamlit display
 def make_streamlit_safe_value(x):
@@ -96,7 +94,6 @@ options = {
     "parse_addresses": parse_addresses,
     "parse_reviews": parse_reviews,
     "missing_value_strategy": strategy_map[missing_strategy_choice],
-
 }
 
 #=============================================================== File uploader
@@ -184,7 +181,9 @@ if uploaded_file is not None:
         # ===================================== Show dataframe shape
         with st.expander("Show cleaned dataframe shape"):
              st.write(cleaned_df.shape)
-        if st.session_state.get('cleaned', True):
+             
+        # Changed this to 'False' so it doesn't trigger automatically
+        if st.session_state.get('cleaned', False):
              st.success("Cleaning completed successfully")
 
         #======================================== Safe CSV download
@@ -198,50 +197,61 @@ if uploaded_file is not None:
             mime="text/csv"
         )
 
-    else:
-      st.info("Please upload a CSV file to begin.")
+else:
+    st.info("Please upload a CSV file to begin.")
 
-#=============================================  User will select ML models to training 
-    if st.session_state.get('cleaned', True):
-       st.divider()
-       st.header("Machine Learning Model Training and Results Evaluation")
+#=============================================  User will select ML models to train
+if st.session_state.get('cleaned', False):
+    st.divider()
+    st.header("Machine Learning Model Training and Results Evaluation")
+    
+    # 1. FIXED FORM INDENTATION
     with st.form("automl_form"):
-         col1,col2 = st.columns(2)
-    with col1:
+        col1, col2 = st.columns(2)
+        
+        with col1:
             # 1. Target column selection
             target_column = st.selectbox("Select target column for modeling", st.session_state['cleaned_df'].columns)
             # 2. Task type selection
-            task_type = st.radio("Select Machine Learning", ["classification", "regression"])
+            task_type = st.radio("Select Machine Learning Task", ["Classification", "Regression"])
+                
+        with col2:
+            # 3. Model selection
+            if task_type == "Classification":
+                available_models = ["Logistic Regression", "Random Forest Classifier", "XGBoost Classifier", "SVC"]
+            else:
+                available_models = ["Linear Regression", "Random Forest Regressor", "XGBoost Regressor", "Ridge Regression"]
             
-    with col2:
-        # 3. Model selection
-         if task_type == "classification":
-            available_models = ["Logistic Regression", "Random Forest Classifier", "XGBoost Classifier", "SVC"]
-         else:
-            available_models = ["Linear Regression", "Random Forest Regressor", "XGBoost Regressor", "Ridge Regression"]
+            selected_models = st.multiselect("Select Models to Train:", available_models, default=available_models)
         
-         selected_models = st.multiselect("Select Models to Train:", available_models, default=available_models)
-    
-        # Submit button for the form
-         start_training = st.form_submit_button("Train Models")
+        # Submit button for the form (Must be inside the 'with st.form' block)
+        start_training = st.form_submit_button("Train Models")
 
+    # 2. EXECUTE TRAINING (Indented under the 'if cleaned' block so it doesn't crash on boot)
     if start_training:
         if len(selected_models) == 0:
-           st.error("Please select at least one model to train.")
+            st.error("Please select at least one model to train.")
         else:
-          with st.spinner(f"Training {len(selected_models)} models... This may take a minute."):
-            try:
-                # Run the AutoML function with the cleaned dataframe and user selections
-                results, best_model, plot_data = run_automl_model(
-                df=st.session_state['cleaned_df'], 
-                target_column=target_column,
-                task_type=task_type, 
-                selected_models=selected_models
-            )
-                st.success(f"Training Complete! Best Model: {results.iloc[0]['Model Name']}")
-                
-                # Display the Results DataFrame
-                st.subheader("ML Model Results")
-                st.dataframe(results, use_container_width=True)
-            except Exception as e:
-                st.error(f"Error during model training: {str(e)}")
+            with st.spinner(f"Training {len(selected_models)} models... This may take a minute."):
+                try:
+                    # Run the AutoML function with the cleaned dataframe and user selections
+                    results, best_model, plot_data = run_automl_model(
+                        df=st.session_state['cleaned_df'], 
+                        target_column=target_column,
+                        task_type=task_type, 
+                        selected_models=selected_models
+                    )
+                    st.success(f"Training Complete! Best Model: {results.iloc[0]['Model Name']}")
+                        
+                    # Display the Results DataFrame (Leaderboard)
+                    st.subheader("ML Model Results")
+                    st.dataframe(results, use_container_width=True)
+                    
+                    # This displays the visuals of the ML model
+                    if "confusion_matrix_fig" in plot_data:
+                        st.subheader("Model Diagnostics")
+                        st.write("This matrix shows where the best model guessed correctly vs. where it got confused.")
+                        st.plotly_chart(plot_data["confusion_matrix_fig"], use_container_width=True)
+                        
+                except Exception as e:
+                    st.error(f"Error during model training: {str(e)}")
