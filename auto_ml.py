@@ -30,7 +30,7 @@ def run_automl_model(df: pd.DataFrame, target_column: str, task_type: str, selec
     
     raw_categorical_cols = X.select_dtypes(include=['object', 'category', 'bool']).columns
     for col in raw_categorical_cols:
-        if X[col].nunique() < 100:  
+        if X[col].nunique() < 10:  
             categorical_features.append(col)
         else:
             columns_to_drop.append(col)
@@ -104,7 +104,7 @@ def run_automl_model(df: pd.DataFrame, target_column: str, task_type: str, selec
                         x=labels, 
                         y=labels,
                         color_continuous_scale="Blues",
-                        title="Confusion Matrix (Best Model)")
+                        title="Confusion Matrix for Best Model")
         plot_data["confusion_matrix_fig"] = fig
 
     leaderboard_df = pd.DataFrame(results).sort_values(by=list(results[0].keys())[1], ascending=False)
